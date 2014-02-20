@@ -47,6 +47,11 @@ public class Query {
         "SELECT * FROM customers WHERE cid = ?";
     private PreparedStatement customerNameStatement;
 
+    private static final String CUSTOMER_PLAN_SQL = "select A.name, A.max_rentals, A.monthly_fee "
+                                                  + "from rental_plans A, has_plan B "
+                                                  + "where B.cid = ? and A.pid = B.pid;";
+    private PreparedStatement customerPlanStatement;
+
     private static final String BEGIN_TRANSACTION_SQL = 
         "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; BEGIN TRANSACTION;";
     private PreparedStatement beginTransactionStatement;
@@ -125,6 +130,7 @@ public class Query {
 
         /* add here more prepare statements for all the other queries you need */
         customerNameStatement = customerConn.prepareStatement(CUSTOMER_NAME_SQL);
+        customerPlanStatement = customerConn.prepareStatement(CUSTOMER_PLAN_SQL);
     }
 
 
@@ -137,6 +143,24 @@ public class Query {
            You have to compute and return the difference between the customer's plan
            and the count of outstanding rentals */
         return (99);
+    }
+
+    public String getCustomerPlan(int cid) throws Exception {
+        String planName = new String();
+        int maxRentals = 0;
+        float monthlyFee = 0;
+
+        customerPlanStatement.clearParameters();
+        customerPlanStatement.setInt(1,cid);
+        ResultSet plan_set = customerPlanStatement.executeQuery();
+        if (plan_set.next())
+        {
+            planName = plan_set.getString("name");
+            maxRentals = plan_set.getInt("max_rentals");
+            monthlyFee = plan_set.getFloat("monthly_fee");
+        }
+
+        return ("name:" + planName + ", max_rentals:" + maxRentals + " monthly_fee:" + monthlyFee);
     }
 
     public String getCustomerName(int cid) throws Exception {
@@ -198,12 +222,10 @@ public class Query {
 
     public void transaction_printPersonalData(int cid) throws Exception {
         /* println the customer's personal data: name, and plan number */
-
-        String customerName = getCustomerName(cid);
-
         System.out.println("*** User Info ***");
         System.out.println("cid: " + cid);
-        System.out.println("name: " + customerName);
+        System.out.println("name: " + getCustomerName(cid));
+        System.out.println("plan: " + getCustomerPlan(cid));
         System.out.println("*****************");
     }
 
