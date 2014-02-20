@@ -39,8 +39,12 @@ public class Query {
 
     /* uncomment, and edit, after your create your own customer database */
     private static final String CUSTOMER_LOGIN_SQL = 
-        "SELECT * FROM customer WHERE login = ? and password = ?";
+        "SELECT * FROM customers WHERE login = ? and password = ?";
     private PreparedStatement customerLoginStatement;
+
+    private static final String CUSTOMER_NAME_SQL = 
+        "SELECT * FROM customers WHERE cid = ?";
+    private PreparedStatement customerNameStatement;
 
     private static final String BEGIN_TRANSACTION_SQL = 
         "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; BEGIN TRANSACTION;";
@@ -119,7 +123,7 @@ public class Query {
         rollbackTransactionStatement = customerConn.prepareStatement(ROLLBACK_SQL);
 
         /* add here more prepare statements for all the other queries you need */
-        /* . . . . . . */
+        customerNameStatement = customerConn.prepareStatement(CUSTOMER_NAME_SQL);
     }
 
 
@@ -136,7 +140,19 @@ public class Query {
 
     public String getCustomerName(int cid) throws Exception {
         /* Find the first and last name of the current customer. */
-        return ("JoeFirstName" + " " + "JoeLastName");
+        String firstName = new String();
+        String lastName = new String();
+
+        customerNameStatement.clearParameters();
+        customerNameStatement.setInt(1,cid);
+        ResultSet customer_set = customerNameStatement.executeQuery();
+        if (customer_set.next())
+        {
+            firstName = customer_set.getString("fname");
+            lastName = customer_set.getString("lname");
+        }
+
+        return (firstName + " " + lastName);
 
     }
 
@@ -181,6 +197,13 @@ public class Query {
 
     public void transaction_printPersonalData(int cid) throws Exception {
         /* println the customer's personal data: name, and plan number */
+
+        String customerName = getCustomerName(cid);
+
+        System.out.println("*** User Info ***");
+        System.out.println("cid: " + cid);
+        System.out.println("name: " + customerName);
+        System.out.println("*****************");
     }
 
 
