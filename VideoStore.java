@@ -119,7 +119,7 @@ public class VideoStore {
         q.prepareStatements();
 
         /* authenticate the user */
-        int cid = q.transaction_login(args[0], args[1]);			
+        int cid = q.transaction_login(args[0], args[1]);
         if (cid >= 0)
             menu(cid, q); /* menu(...) does the real work */
         else

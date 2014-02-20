@@ -11,18 +11,18 @@ CREATE CLUSTERED INDEX CUSTOMER_RENTALS_Index ON CUSTOMER_RENTALS (cid);
 
 -- Drop Tables:
 
--- DROP TABLE HAS_PLAN;
--- DROP TABLE CUSTOMER_RENTALS;
--- DROP TABLE RENTAL_PLANS;
--- DROP TABLE CUSTOMERS;
+DROP TABLE HAS_PLAN;
+DROP TABLE CUSTOMER_RENTALS;
+DROP TABLE RENTAL_PLANS;
+DROP TABLE CUSTOMERS;
 
 -- Populate Tables
 
 INSERT INTO CUSTOMERS (login, password, fname, lname)
-VALUES ('foo', 'password1', 'Foo', 'Smith');
+VALUES ('joesmith', 'password1', 'Joe', 'Smith');
 
 INSERT INTO CUSTOMERS (login, password, fname, lname)
-VALUES ('bar', 'password2', 'Bar', 'Jones');
+VALUES ('bobjones', 'password2', 'Bob', 'Jones');
 
 INSERT INTO RENTAL_PLANS (name, max_rentals, monthly_fee)
 VALUES ('Basic', 1, 7.99);

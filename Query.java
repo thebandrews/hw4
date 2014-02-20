@@ -16,6 +16,7 @@ public class Query {
 
     private String jSQLDriver;
     private String jSQLUrl;
+    private String jSQLCustomerUrl;
     private String jSQLUser;
     private String jSQLPassword;
 
@@ -69,6 +70,8 @@ public class Query {
         jSQLUser       = configProps.getProperty("videostore.sqlazure_username");
         jSQLPassword   = configProps.getProperty("videostore.sqlazure_password");
 
+        jSQLCustomerUrl = configProps.getProperty("videostore.customer_url");
+
 
         /* load jdbc drivers */
         Class.forName(jSQLDriver).newInstance();
@@ -83,15 +86,16 @@ public class Query {
 
         /* You will also want to appropriately set the 
                    transaction's isolation level through: */
-        conn.setTransactionIsolation(TRANSACTION_SERIALIZABLE);
+        //conn.setTransactionIsolation(TRANSACTION_SERIALIZABLE);
 
         /* Also you will put code here to specify the connection to your
-           customer DB.  E.g.
+           customer DB.  E.g. */
 
-           customerConn = DriverManager.getConnection(...);
-           customerConn.setAutoCommit(true); //by default automatically commit after each statement
-           customerConn.setTransactionIsolation(...); //
-        */
+        customerConn = DriverManager.getConnection(jSQLCustomerUrl, // database
+                                                   jSQLUser, // user
+                                                   jSQLPassword); // password
+        customerConn.setAutoCommit(true); //by default automatically commit after each statement
+        //customerConn.setTransactionIsolation(TRANSACTION_SERIALIZABLE);
    }
 
     public void closeConnection() throws Exception {
@@ -109,12 +113,10 @@ public class Query {
         directorMidStatement = conn.prepareStatement(DIRECTOR_MID_SQL);
 
         /* uncomment after you create your customers database */
-        /*
         customerLoginStatement = customerConn.prepareStatement(CUSTOMER_LOGIN_SQL);
         beginTransactionStatement = customerConn.prepareStatement(BEGIN_TRANSACTION_SQL);
         commitTransactionStatement = customerConn.prepareStatement(COMMIT_SQL);
         rollbackTransactionStatement = customerConn.prepareStatement(ROLLBACK_SQL);
-        */
 
         /* add here more prepare statements for all the other queries you need */
         /* . . . . . . */
@@ -159,19 +161,22 @@ public class Query {
         /* authenticates the user, and returns the user id, or -1 if authentication fails */
 
         /* Uncomment after you create your own customers database */
-        /*
         int cid;
 
         customerLoginStatement.clearParameters();
         customerLoginStatement.setString(1,name);
         customerLoginStatement.setString(2,password);
         ResultSet cid_set = customerLoginStatement.executeQuery();
-        if (cid_set.next()) cid = cid_set.getInt(1);
-        else cid = -1;
+        if (cid_set.next())
+        {
+            cid = cid_set.getInt(1);
+        }
+        else
+        {
+            cid = -1;
+        }
         cid_set.close();
         return(cid);
-         */
-        return (55);
     }
 
     public void transaction_printPersonalData(int cid) throws Exception {
