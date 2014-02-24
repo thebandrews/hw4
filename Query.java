@@ -55,13 +55,13 @@ public class Query {
                                                   + "where B.cid = ? and A.pid = B.pid;";
     private PreparedStatement customerPlanStatement;
 
-    private static final String CUSTOMER_RENTALS_SQL = "select * from customer_rentals where cid = ?";
+    private static final String CUSTOMER_RENTALS_SQL = "select * from customer_rentals where cid = ? and status = 'open'";
     private PreparedStatement customerRentalsStatement;
 
     private static final String RENTAL_PLANS_SQL = "select * from rental_plans";
     private PreparedStatement rentalPlansStatement;
 
-    private static final String VALID_PLAN_SQL = "select pid from rental_plans where pid = ?";
+    private static final String VALID_PLAN_SQL = "select * from rental_plans where pid = ?";
     private PreparedStatement validPlanStatement;
 
     private static final String VALID_MOVIE_SQL = "select * from movie where id = ?";
@@ -72,6 +72,9 @@ public class Query {
 
     private static final String UPDATE_HAS_PLAN_SQL = "update has_plan set pid = ? where cid = ?";
     private PreparedStatement updateHasPlanStatement;
+
+    private static final String UPDATE_CUSTOMER_RENTALS_SQL = "update customer_rentals set status = 'closed' where cid = ? and mid = ?";
+    private PreparedStatement updateCustomerRentalsStatement;
 
     private static final String INSERT_RENTAL_SQL = "INSERT INTO CUSTOMER_RENTALS (cid, mid, status, checkout_date) "
                                                     + "VALUES (?, ?, 'open', SYSDATETIME());";
@@ -163,6 +166,7 @@ public class Query {
         validPlanStatement = customerConn.prepareStatement(VALID_PLAN_SQL);
         renterIdStatement = customerConn.prepareStatement(RENTER_ID_SQL);
         insertRentalStatement = customerConn.prepareStatement(INSERT_RENTAL_SQL);
+        updateCustomerRentalsStatement = customerConn.prepareStatement(UPDATE_CUSTOMER_RENTALS_SQL);
     }
 
 
@@ -366,16 +370,41 @@ public class Query {
 
         beginTransaction();
 
+        int curMaxRentals = 0;
+        int newMaxRentals = 0;
+        int remainingRentals = 0;
+        int currentRentals = 0;
         boolean validPlan = isValidPlan(pid);
+
+        customerPlanStatement.clearParameters();
+        customerPlanStatement.setInt(1,cid);
+        ResultSet plan_set = customerPlanStatement.executeQuery();
+        if (plan_set.next())
+        {
+            curMaxRentals = plan_set.getInt("max_rentals");
+        }
+
+        remainingRentals = getRemainingRentals(cid);
+        currentRentals = curMaxRentals - remainingRentals;
+
+        validPlanStatement.clearParameters();
+        validPlanStatement.setInt(1,pid);
+        ResultSet rental_set = validPlanStatement.executeQuery();
+        if (rental_set.next())
+        {
+            newMaxRentals = rental_set.getInt("max_rentals");
+        }
+
         updateHasPlanStatement.executeUpdate();
 
-        if(validPlan /* TODO: and current rentals don't exceed new plan */)
+        if(validPlan && (newMaxRentals >= currentRentals))
         {
+            System.out.println("Commit transaction");
             commitTransaction();
         }
         else
         {
-            System.out.println("Invalid plan ID!");
+            System.out.println("Rollback transaction");
             rollbackTransaction();
         }
     }
@@ -414,18 +443,36 @@ public class Query {
 
         if(remainingRentals > 0 && renterId == -1 && validMovie)
         {
-            System.out.println("commiting transaction");
+            System.out.println("Commit transaction");
             commitTransaction();
         }
         else
         {
-            System.out.println("roll back transaction");
+            System.out.println("Rollback transaction");
             rollbackTransaction();
         }
     }
 
     public void transaction_return(int cid, int mid) throws Exception {
         /* return the movie mid by the customer cid */
+
+        beginTransaction();
+        int renterId = getRenterID(mid);
+
+        updateCustomerRentalsStatement.clearParameters();
+        updateCustomerRentalsStatement.setInt(1, cid);
+        updateCustomerRentalsStatement.setInt(2, mid);
+        updateCustomerRentalsStatement.executeUpdate();
+        if(renterId == cid)
+        {
+            System.out.println("Commit transaction");
+            commitTransaction();
+        }
+        else
+        {
+            System.out.println("Rollback transaction");
+            rollbackTransaction();
+        }
     }
 
     public void transaction_fastSearch(int cid, String movie_title)
