@@ -39,6 +39,11 @@ public class Query {
                      + "WHERE x.mid = ? and x.did = y.id";
     private PreparedStatement directorMidStatement;
 
+    private static final String ACTOR_MID_SQL = "SELECT distinct a.fname, a.lname "
+                                                + "FROM actor a, casts c "
+                                                + "WHERE c.mid = ? and a.id = c.pid order by lname";
+    private PreparedStatement actorMidStatement;
+
     /* uncomment, and edit, after your create your own customer database */
     private static final String CUSTOMER_LOGIN_SQL = 
         "SELECT * FROM customers WHERE login = ? and password = ?";
@@ -149,6 +154,7 @@ public class Query {
         directorMidStatement = conn.prepareStatement(DIRECTOR_MID_SQL);
         validMovieStatement = conn.prepareStatement(VALID_MOVIE_SQL);
         searchStatement = conn.prepareStatement(SEARCH_SQL);
+        actorMidStatement = conn.prepareStatement(ACTOR_MID_SQL);
 
         /* uncomment after you create your customers database */
         customerLoginStatement = customerConn.prepareStatement(CUSTOMER_LOGIN_SQL);
@@ -188,6 +194,7 @@ public class Query {
         {
             curRentals++;
         }
+        customer_set.close();
 
         customerPlanStatement.clearParameters();
         customerPlanStatement.setInt(1,cid);
@@ -196,6 +203,7 @@ public class Query {
         {
             maxRentals = plan_set.getInt("max_rentals");
         }
+        plan_set.close();
 
         remainingRentals = maxRentals - curRentals;
 
@@ -215,6 +223,7 @@ public class Query {
             firstName = customer_set.getString("fname");
             lastName = customer_set.getString("lname");
         }
+        customer_set.close();
 
         return (firstName + " " + lastName);
 
@@ -228,10 +237,12 @@ public class Query {
 
         if(plan_set.next())
         {
+            plan_set.close();
             return true;
         }
         else
         {
+            plan_set.close();
             return false;
         }
     }
@@ -244,10 +255,12 @@ public class Query {
 
         if(movie_set.next())
         {
+            movie_set.close();
             return true;
         }
         else
         {
+            movie_set.close();
             return false;
         }
     }
@@ -259,10 +272,13 @@ public class Query {
         ResultSet rental_set = renterIdStatement.executeQuery();
         if(rental_set.next())
         {
-            return rental_set.getInt("cid");
+            int cid = rental_set.getInt("cid");
+            rental_set.close();
+            return cid;
         }
         else
         {
+            rental_set.close();
             return -1;
         }
     }
@@ -306,6 +322,7 @@ public class Query {
             maxRentals = plan_set.getInt("max_rentals");
             monthlyFee = plan_set.getFloat("monthly_fee");
         }
+        plan_set.close();
 
         int remainingRentals = getRemainingRentals(cid);
         int currentRentals = maxRentals - remainingRentals;
@@ -351,8 +368,31 @@ public class Query {
                         + " " + director_set.getString(2));
             }
             director_set.close();
+
             /* now you need to retrieve the actors, in the same manner */
+            actorMidStatement.clearParameters();
+            actorMidStatement.setInt(1, mid);
+            ResultSet actor_set = actorMidStatement.executeQuery();
+            while (actor_set.next()) {
+                System.out.println("\t\tActor: " + actor_set.getString("fname")
+                                   + " " + actor_set.getString("lname"));
+            }
+            actor_set.close();
+
             /* then you have to find the status: of "AVAILABLE" "YOU HAVE IT", "UNAVAILABLE" */
+            int rid = getRenterID(mid);
+            if(rid == -1)
+            {
+                System.out.println("\t\tMovie availability: AVAILABLE");
+            }
+            else if(rid == cid)
+            {
+                System.out.println("\t\tMovie availability: YOU HAVE IT");
+            }
+            else
+            {
+                System.out.println("\t\tMovie availability: UNAVAILABLE");
+            }
         }
         movie_set.close();
         System.out.println();
@@ -381,6 +421,7 @@ public class Query {
         {
             curMaxRentals = plan_set.getInt("max_rentals");
         }
+        plan_set.close();
 
         remainingRentals = getRemainingRentals(cid);
         currentRentals = curMaxRentals - remainingRentals;
@@ -392,6 +433,7 @@ public class Query {
         {
             newMaxRentals = rental_set.getInt("max_rentals");
         }
+        rental_set.close();
 
         updateHasPlanStatement.executeUpdate();
 
@@ -423,6 +465,7 @@ public class Query {
             System.out.println(String.format("%-10d%-15s%-14d$%.2f",pid,name,maxRentals,monthlyFee));
         }
         System.out.println("***************************************************");
+        plan_set.close();
     }
 
     public void transaction_rent(int cid, int mid) throws Exception {

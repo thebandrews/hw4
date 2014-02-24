@@ -45,7 +45,12 @@ VALUES (2, 2);
 INSERT INTO CUSTOMER_RENTALS (cid, mid, status, checkout_date)
 VALUES (1, 107438, 'open', SYSDATETIME());
 
+-- Insert Star Wars A New Hope into customer 1
+INSERT INTO CUSTOMER_RENTALS (cid, mid, status, checkout_date)
+VALUES (1, 457016, 'open', SYSDATETIME());
+
 -- Insert Battlestar Galactica into customer 2
 INSERT INTO CUSTOMER_RENTALS (cid, mid, status, checkout_date)
 VALUES (2, 58363, 'open', SYSDATETIME());
+
 
