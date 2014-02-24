@@ -64,8 +64,18 @@ public class Query {
     private static final String VALID_PLAN_SQL = "select pid from rental_plans where pid = ?";
     private PreparedStatement validPlanStatement;
 
+    private static final String VALID_MOVIE_SQL = "select * from movie where id = ?";
+    private PreparedStatement validMovieStatement;
+
+    private static final String RENTER_ID_SQL = "select cid from customer_rentals where status = 'open' and mid = ?";
+    private PreparedStatement renterIdStatement;
+
     private static final String UPDATE_HAS_PLAN_SQL = "update has_plan set pid = ? where cid = ?";
     private PreparedStatement updateHasPlanStatement;
+
+    private static final String INSERT_RENTAL_SQL = "INSERT INTO CUSTOMER_RENTALS (cid, mid, status, checkout_date) "
+                                                    + "VALUES (?, ?, 'open', SYSDATETIME());";
+    private PreparedStatement insertRentalStatement;
 
     private static final String BEGIN_TRANSACTION_SQL = 
         "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; BEGIN TRANSACTION;";
@@ -111,7 +121,7 @@ public class Query {
 
         /* You will also want to appropriately set the 
                    transaction's isolation level through: */
-        //conn.setTransactionIsolation(TRANSACTION_SERIALIZABLE);
+        conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
 
         /* Also you will put code here to specify the connection to your
            customer DB.  E.g. */
@@ -120,7 +130,7 @@ public class Query {
                                                    jSQLUser, // user
                                                    jSQLPassword); // password
         customerConn.setAutoCommit(true); //by default automatically commit after each statement
-        //customerConn.setTransactionIsolation(TRANSACTION_SERIALIZABLE);
+        customerConn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
    }
 
     public void closeConnection() throws Exception {
@@ -136,6 +146,7 @@ public class Query {
     public void prepareStatements() throws Exception {
 
         directorMidStatement = conn.prepareStatement(DIRECTOR_MID_SQL);
+        validMovieStatement = conn.prepareStatement(VALID_MOVIE_SQL);
 
         /* uncomment after you create your customers database */
         customerLoginStatement = customerConn.prepareStatement(CUSTOMER_LOGIN_SQL);
@@ -150,6 +161,8 @@ public class Query {
         rentalPlansStatement = customerConn.prepareStatement(RENTAL_PLANS_SQL);
         updateHasPlanStatement = customerConn.prepareStatement(UPDATE_HAS_PLAN_SQL);
         validPlanStatement = customerConn.prepareStatement(VALID_PLAN_SQL);
+        renterIdStatement = customerConn.prepareStatement(RENTER_ID_SQL);
+        insertRentalStatement = customerConn.prepareStatement(INSERT_RENTAL_SQL);
     }
 
 
@@ -222,12 +235,33 @@ public class Query {
 
     public boolean isValidMovie(int mid) throws Exception {
         /* is mid a valid movie ID?  You have to figure it out */
-        return true;
+        validMovieStatement.clearParameters();
+        validMovieStatement.setInt(1,mid);
+        ResultSet movie_set = validMovieStatement.executeQuery();
+
+        if(movie_set.next())
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     private int getRenterID(int mid) throws Exception {
         /* Find the customer id (cid) of whoever currently rents the movie mid; return -1 if none */
-        return (77);
+        renterIdStatement.clearParameters();
+        renterIdStatement.setInt(1,mid);
+        ResultSet rental_set = renterIdStatement.executeQuery();
+        if(rental_set.next())
+        {
+            return rental_set.getInt("cid");
+        }
+        else
+        {
+            return -1;
+        }
     }
 
     /**********************************************************/
@@ -330,13 +364,19 @@ public class Query {
         updateHasPlanStatement.setInt(1, pid);
         updateHasPlanStatement.setInt(2, cid);
 
-        if(isValidPlan(pid))
+        beginTransaction();
+
+        boolean validPlan = isValidPlan(pid);
+        updateHasPlanStatement.executeUpdate();
+
+        if(validPlan /* TODO: and current rentals don't exceed new plan */)
         {
-            updateHasPlanStatement.executeUpdate();
+            commitTransaction();
         }
         else
         {
             System.out.println("Invalid plan ID!");
+            rollbackTransaction();
         }
     }
 
@@ -361,6 +401,27 @@ public class Query {
     public void transaction_rent(int cid, int mid) throws Exception {
         /* rent the movie mid to the customer cid */
         /* remember to enforce consistency ! */
+        beginTransaction();
+
+        int remainingRentals = getRemainingRentals(cid);
+        int renterId = getRenterID(mid);
+        boolean validMovie = isValidMovie(mid);
+
+        insertRentalStatement.clearParameters();
+        insertRentalStatement.setInt(1, cid);
+        insertRentalStatement.setInt(2, mid);
+        insertRentalStatement.executeUpdate();
+
+        if(remainingRentals > 0 && renterId == -1 && validMovie)
+        {
+            System.out.println("commiting transaction");
+            commitTransaction();
+        }
+        else
+        {
+            System.out.println("roll back transaction");
+            rollbackTransaction();
+        }
     }
 
     public void transaction_return(int cid, int mid) throws Exception {
