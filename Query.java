@@ -1,3 +1,6 @@
+//  To run the program: javac -g VideoStore.java Query.java
+//                      java -cp ".;sqljdbc4.jar" VideoStore joesmith password1
+
 import java.util.Properties;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -51,6 +54,18 @@ public class Query {
                                                   + "from rental_plans A, has_plan B "
                                                   + "where B.cid = ? and A.pid = B.pid;";
     private PreparedStatement customerPlanStatement;
+
+    private static final String CUSTOMER_RENTALS_SQL = "select * from customer_rentals where cid = ?";
+    private PreparedStatement customerRentalsStatement;
+
+    private static final String RENTAL_PLANS_SQL = "select * from rental_plans";
+    private PreparedStatement rentalPlansStatement;
+
+    private static final String VALID_PLAN_SQL = "select pid from rental_plans where pid = ?";
+    private PreparedStatement validPlanStatement;
+
+    private static final String UPDATE_HAS_PLAN_SQL = "update has_plan set pid = ? where cid = ?";
+    private PreparedStatement updateHasPlanStatement;
 
     private static final String BEGIN_TRANSACTION_SQL = 
         "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; BEGIN TRANSACTION;";
@@ -131,6 +146,10 @@ public class Query {
         /* add here more prepare statements for all the other queries you need */
         customerNameStatement = customerConn.prepareStatement(CUSTOMER_NAME_SQL);
         customerPlanStatement = customerConn.prepareStatement(CUSTOMER_PLAN_SQL);
+        customerRentalsStatement = customerConn.prepareStatement(CUSTOMER_RENTALS_SQL);
+        rentalPlansStatement = customerConn.prepareStatement(RENTAL_PLANS_SQL);
+        updateHasPlanStatement = customerConn.prepareStatement(UPDATE_HAS_PLAN_SQL);
+        validPlanStatement = customerConn.prepareStatement(VALID_PLAN_SQL);
     }
 
 
@@ -142,25 +161,29 @@ public class Query {
         /* How many movies can she/he still rent?
            You have to compute and return the difference between the customer's plan
            and the count of outstanding rentals */
-        return (99);
-    }
-
-    public String getCustomerPlan(int cid) throws Exception {
-        String planName = new String();
+        int curRentals = 0;
         int maxRentals = 0;
-        float monthlyFee = 0;
+        int remainingRentals = 0;
+
+        customerRentalsStatement.clearParameters();
+        customerRentalsStatement.setInt(1,cid);
+        ResultSet customer_set = customerRentalsStatement.executeQuery();
+        while (customer_set.next())
+        {
+            curRentals++;
+        }
 
         customerPlanStatement.clearParameters();
         customerPlanStatement.setInt(1,cid);
         ResultSet plan_set = customerPlanStatement.executeQuery();
         if (plan_set.next())
         {
-            planName = plan_set.getString("name");
             maxRentals = plan_set.getInt("max_rentals");
-            monthlyFee = plan_set.getFloat("monthly_fee");
         }
 
-        return ("name:" + planName + ", max_rentals:" + maxRentals + " monthly_fee:" + monthlyFee);
+        remainingRentals = maxRentals - curRentals;
+
+        return (remainingRentals);
     }
 
     public String getCustomerName(int cid) throws Exception {
@@ -183,7 +206,18 @@ public class Query {
 
     public boolean isValidPlan(int planid) throws Exception {
         /* Is planid a valid plan ID?  You have to figure it out */
-        return true;
+        validPlanStatement.clearParameters();
+        validPlanStatement.setInt(1,planid);
+        ResultSet plan_set = validPlanStatement.executeQuery();
+
+        if(plan_set.next())
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     public boolean isValidMovie(int mid) throws Exception {
@@ -221,12 +255,35 @@ public class Query {
     }
 
     public void transaction_printPersonalData(int cid) throws Exception {
+
+        String planName = new String();
+        int maxRentals = 0;
+        float monthlyFee = 0;
+
+        customerPlanStatement.clearParameters();
+        customerPlanStatement.setInt(1,cid);
+        ResultSet plan_set = customerPlanStatement.executeQuery();
+        if (plan_set.next())
+        {
+            planName = plan_set.getString("name");
+            maxRentals = plan_set.getInt("max_rentals");
+            monthlyFee = plan_set.getFloat("monthly_fee");
+        }
+
+        int remainingRentals = getRemainingRentals(cid);
+        int currentRentals = maxRentals - remainingRentals;
+
+
         /* println the customer's personal data: name, and plan number */
-        System.out.println("*** User Info ***");
-        System.out.println("cid: " + cid);
-        System.out.println("name: " + getCustomerName(cid));
-        System.out.println("plan: " + getCustomerPlan(cid));
-        System.out.println("*****************");
+        System.out.println("********** User Info **********");
+        System.out.println(String.format("%-22s%d","[cid]: ", cid));
+        System.out.println(String.format("%-22s%s","[User Name]: ", getCustomerName(cid)));
+        System.out.println(String.format("%-22s%s","[Plan Name]: ", planName));
+        System.out.println(String.format("%-22s%.2f", "[Monthly Fee]: ", monthlyFee));
+        System.out.println(String.format("%-22s%d","[Max Rentals]: ", maxRentals));
+        System.out.println(String.format("%-22s%d","[Current Rentals]: ", currentRentals));
+        System.out.println(String.format("%-22s%d","[Remaining Rentals]: ", remainingRentals));
+        System.out.println("*******************************");
     }
 
 
@@ -268,10 +325,37 @@ public class Query {
     public void transaction_choosePlan(int cid, int pid) throws Exception {
         /* updates the customer's plan to pid: UPDATE customer SET plid = pid */
         /* remember to enforce consistency ! */
+
+        updateHasPlanStatement.clearParameters();
+        updateHasPlanStatement.setInt(1, pid);
+        updateHasPlanStatement.setInt(2, cid);
+
+        if(isValidPlan(pid))
+        {
+            updateHasPlanStatement.executeUpdate();
+        }
+        else
+        {
+            System.out.println("Invalid plan ID!");
+        }
     }
 
     public void transaction_listPlans() throws Exception {
         /* println all available plans: SELECT * FROM plan */
+        rentalPlansStatement.clearParameters();
+        ResultSet plan_set = rentalPlansStatement.executeQuery();
+        System.out.println("********************** Plans **********************");
+        System.out.println(String.format("%-10s%-15s%-14s%s","pid","name","max_rentals","monthly_fee"));
+        while (plan_set.next())
+        {
+            int pid = plan_set.getInt("pid");
+            String name = plan_set.getString("name");
+            int maxRentals = plan_set.getInt("max_rentals");
+            float monthlyFee = plan_set.getFloat("monthly_fee");
+
+            System.out.println(String.format("%-10d%-15s%-14d$%.2f",pid,name,maxRentals,monthlyFee));
+        }
+        System.out.println("***************************************************");
     }
 
     public void transaction_rent(int cid, int mid) throws Exception {
@@ -295,20 +379,23 @@ public class Query {
     /* Uncomment helpers below once you've got beginTransactionStatement,
        commitTransactionStatement, and rollbackTransactionStatement setup from
        prepareStatements():
-    
-       public void beginTransaction() throws Exception {
+    */
+    public void beginTransaction() throws Exception
+    {
         customerConn.setAutoCommit(false);
-        beginTransactionStatement.executeUpdate();	
-        }
+        beginTransactionStatement.executeUpdate();
+    }
 
-        public void commitTransaction() throws Exception {
-        commitTransactionStatement.executeUpdate();	
+    public void commitTransaction() throws Exception
+    {
+        commitTransactionStatement.executeUpdate();
         customerConn.setAutoCommit(true);
     }
-        public void rollbackTransaction() throws Exception {
+
+    public void rollbackTransaction() throws Exception
+    {
         rollbackTransactionStatement.executeUpdate();
         customerConn.setAutoCommit(true);
-        } 
-    */
+    }
 
 }

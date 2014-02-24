@@ -1,6 +1,3 @@
--- To run the program: javac -g VideoStore.java Query.java
---                     java -cp ".;sqljdbc4.jar" VideoStore user password
-
 -- Q1) Customer Database Design
 CREATE TABLE CUSTOMERS (cid INTEGER IDENTITY, login VARCHAR(80), password VARCHAR(30), fname VARCHAR(30), lname VARCHAR(30), PRIMARY KEY (cid));
 CREATE TABLE RENTAL_PLANS (pid INTEGER IDENTITY, name VARCHAR(80), max_rentals INTEGER, monthly_fee MONEY, PRIMARY KEY (pid));
