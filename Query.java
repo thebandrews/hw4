@@ -31,10 +31,8 @@ public class Query {
     // Canned queries
 
     // LIKE does a case-insensitive match
-    private static final String SEARCH_SQL_BEGIN =
-        "SELECT * FROM movie WHERE name LIKE '%";
-    private static final String SEARCH_SQL_END = 
-        "%' ORDER BY id";
+    private static final String SEARCH_SQL = "select * from movie where name like ? order by id";
+    private PreparedStatement searchStatement;
 
     private static final String DIRECTOR_MID_SQL = "SELECT y.* "
                      + "FROM movie_directors x, directors y "
@@ -150,6 +148,7 @@ public class Query {
 
         directorMidStatement = conn.prepareStatement(DIRECTOR_MID_SQL);
         validMovieStatement = conn.prepareStatement(VALID_MOVIE_SQL);
+        searchStatement = conn.prepareStatement(SEARCH_SQL);
 
         /* uncomment after you create your customers database */
         customerLoginStatement = customerConn.prepareStatement(CUSTOMER_LOGIN_SQL);
@@ -335,10 +334,9 @@ public class Query {
            AVAILABLE, or UNAVAILABLE, or YOU CURRENTLY RENT IT */
 
         /* Interpolate the movie title into the SQL string */
-        String searchSql = SEARCH_SQL_BEGIN + movie_title + SEARCH_SQL_END;
-        
-        Statement searchStatement = conn.createStatement();
-        ResultSet movie_set = searchStatement.executeQuery(searchSql);
+        searchStatement.clearParameters();
+        searchStatement.setString(1,"%" + movie_title + "%");
+        ResultSet movie_set = searchStatement.executeQuery();
         while (movie_set.next()) {
             int mid = movie_set.getInt(1);
             System.out.println("ID: " + mid + " NAME: "
