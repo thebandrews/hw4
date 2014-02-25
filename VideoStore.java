@@ -17,6 +17,7 @@ public class VideoStore {
         System.out.println("> quit");
     }
 
+
     public static void menu(int cid, Query q) throws Exception {
         /* cid = customer id (obtained from the command line) */
 
