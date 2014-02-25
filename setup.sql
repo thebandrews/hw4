@@ -35,7 +35,7 @@ VALUES ('Super Access', 7, 13.99);
 
 -- Set customer 1 to have plan id 1 = 'Basic'
 INSERT INTO HAS_PLAN (cid, pid)
-VALUES (1, 1);
+VALUES (1, 2);
 
 -- Set customer 2 to have plan id 2 = 'Rental Plus'
 INSERT INTO HAS_PLAN (cid, pid)

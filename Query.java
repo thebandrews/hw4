@@ -545,10 +545,12 @@ public class Query {
         directorSetStatement.clearParameters();
         directorSetStatement.setString(1,"%" + movie_title + "%");
         ResultSet director_set = directorSetStatement.executeQuery();
+        boolean moreDirectors = director_set.next();
 
         actorSetStatement.clearParameters();
         actorSetStatement.setString(1,"%" + movie_title + "%");
         ResultSet actor_set = actorSetStatement.executeQuery();
+        boolean moreActors = actor_set.next();
 
         while (movie_set.next()) {
             int mid = movie_set.getInt(1);
@@ -556,16 +558,18 @@ public class Query {
                     + movie_set.getString(2) + " YEAR: "
                     + movie_set.getString(3));
 
-            while(director_set.next() && director_set.getInt(1) == mid)
+            while(moreDirectors && director_set.getInt(1) == mid)
             {
-                System.out.println("\t\tDirector: " + director_set.getString("fname")
-                        + " " + director_set.getString("lname"));
+                    System.out.println("\t\tDirector: " + director_set.getString("fname")
+                            + " " + director_set.getString("lname"));
+                moreDirectors = director_set.next();
             }
 
-            while(actor_set.next() && actor_set.getInt(1) == mid)
+            while(moreActors && actor_set.getInt(1) == mid)
             {
                 System.out.println("\t\tActor: " + actor_set.getString("fname")
                                    + " " + actor_set.getString("lname"));
+                moreActors = actor_set.next();
             }
         }
 
