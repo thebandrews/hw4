@@ -34,6 +34,18 @@ public class Query {
     private static final String SEARCH_SQL = "select * from movie where name like ? order by id";
     private PreparedStatement searchStatement;
 
+    private static final String DIRECTOR_SET_SQL = "select distinct m.id, d.fname, d.lname from movie m, movie_directors md, directors d "
+                                                   + "where m.name like ? and "
+                                                   + "md.mid = m.id and "
+                                                   + "d.id = md.did order by m.id";
+    private PreparedStatement directorSetStatement;
+
+    private static final String ACTOR_SET_SQL = "select distinct m.id, a.fname, a.lname from movie m, casts c, actor a "
+                                                + "where m.name like ? and "
+                                                + "c.mid = m.id and "
+                                                + "a.id = c.pid order by m.id";
+    private PreparedStatement actorSetStatement;
+
     private static final String DIRECTOR_MID_SQL = "SELECT y.* "
                      + "FROM movie_directors x, directors y "
                      + "WHERE x.mid = ? and x.did = y.id";
@@ -155,6 +167,8 @@ public class Query {
         validMovieStatement = conn.prepareStatement(VALID_MOVIE_SQL);
         searchStatement = conn.prepareStatement(SEARCH_SQL);
         actorMidStatement = conn.prepareStatement(ACTOR_MID_SQL);
+        directorSetStatement = conn.prepareStatement(DIRECTOR_SET_SQL);
+        actorSetStatement = conn.prepareStatement(ACTOR_SET_SQL);
 
         /* uncomment after you create your customers database */
         customerLoginStatement = customerConn.prepareStatement(CUSTOMER_LOGIN_SQL);
@@ -522,6 +536,42 @@ public class Query {
            Needs to run three SQL queries: (a) movies, (b) movies join directors, (c) movies join actors
            Answers are sorted by mid.
            Then merge-joins the three answer sets */
+
+        // Part a) Search for movies
+        searchStatement.clearParameters();
+        searchStatement.setString(1,"%" + movie_title + "%");
+        ResultSet movie_set = searchStatement.executeQuery();
+
+        directorSetStatement.clearParameters();
+        directorSetStatement.setString(1,"%" + movie_title + "%");
+        ResultSet director_set = directorSetStatement.executeQuery();
+
+        actorSetStatement.clearParameters();
+        actorSetStatement.setString(1,"%" + movie_title + "%");
+        ResultSet actor_set = actorSetStatement.executeQuery();
+
+        while (movie_set.next()) {
+            int mid = movie_set.getInt(1);
+            System.out.println("ID: " + mid + " NAME: "
+                    + movie_set.getString(2) + " YEAR: "
+                    + movie_set.getString(3));
+
+            while(director_set.next() && director_set.getInt(1) == mid)
+            {
+                System.out.println("\t\tDirector: " + director_set.getString("fname")
+                        + " " + director_set.getString("lname"));
+            }
+
+            while(actor_set.next() && actor_set.getInt(1) == mid)
+            {
+                System.out.println("\t\tActor: " + actor_set.getString("fname")
+                                   + " " + actor_set.getString("lname"));
+            }
+        }
+
+        movie_set.close();
+        director_set.close();
+        actor_set.close();
     }
 
 

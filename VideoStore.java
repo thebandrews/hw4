@@ -86,15 +86,14 @@ public class VideoStore {
                 q.transaction_return(cid, mid);
             }
             else if (t.equals("fastsearch")) {
-                /* same as search, only faster (and single words only) */
+                /* same as search, only faster */
                 if (st.hasMoreTokens()) {
-                    String movie_word = st.nextToken();
-                    System.out.println("Fast Searching for the movie '"
-                                       + movie_word + "'");
-                    q.transaction_fastSearch(cid, movie_word);
+                    String movie_title = st.nextToken("\n").trim(); /* read the rest of the line */
+                    System.out.println("Fast searching for the movie '"
+                                       + movie_title + "'");
+                    q.transaction_fastSearch(cid, movie_title);
                 } else {
-                    System.out
-                        .println("Error: need to type in movie title");
+                    System.out.println("Error: need to type in movie title");
                 }
             }
             else if (t.equals("quit")) {
